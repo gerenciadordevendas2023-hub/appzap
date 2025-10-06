@@ -1,0 +1,245 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #fbe8e6, #d4f5df, #aaf0c2);
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 600px;
+  background-color: rgb(149, 239, 5);
+  margin: 20px auto;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.1);
+}
+
+header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.logo {
+  width: 100px;
+  height: auto;
+  margin-bottom: 10px;
+}
+
+.assinatura {
+  font-style: italic;
+  color: #666;
+}
+
+h1 {
+  color: #1c7e44;
+}
+
+label {
+  display: block;
+  margin-top: 15px;
+  font-weight: bold;
+  color: #1c4d33;
+}
+
+input[type="text"],
+input[type="file"],
+select,
+textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.botoes {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+button {
+  flex: 1;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 12px;
+  font-weight: bold;
+  border-radius: 6px;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #218838;
+}
+
+#status {
+  margin-top: 20px;
+  font-weight: bold;
+  color: #1c4d33;
+}
+.logout {
+  width: 100%;
+  margin-top: 30px;
+  padding: 12px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.logout:hover {
+  background-color: #c82333;
+}
+#atualizarBtn {
+  padding: 12px 24px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  margin-bottom: 20px;
+}
+
+#atualizarBtn:hover {
+  background-color: #0056b3;
+  transform: scale(1.03);
+}
+
+#atualizarBtn:active {
+  background-color: #004a9f;
+  transform: scale(0.98);
+}
+
+#statusAtualizacao {
+  font-weight: bold;
+  color: green;
+  margin-top: 10px;
+}
+.botao-voltar {
+  display: inline-block;
+  margin: 15px;
+  padding: 10px 20px;
+  background-color: #3498db;
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: bold;
+  transition: background-color 0.2s ease;
+}
+
+.botao-voltar:hover {
+  background-color: #2980b9;
+}
+
+.botao.limpar {
+  background-color: #f44336;
+  color: white;
+  margin-left: 10px;
+}
+
+ /* Reset e base */
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: #f4f4f4;
+  display: flex;
+  height: 100vh;
+}
+
+body {
+  font-family: sans-serif;
+  margin: 0;
+  display: flex;
+}
+
+
+
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f9f9f9;
+  margin: 0;
+  padding: 2rem;
+  color: #333;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: #fff;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1, h2 {
+  color: #222;
+}
+
+.chat-config label {
+  display: block;
+  margin-top: 1rem;
+  font-weight: bold;
+}
+
+.chat-config textarea,
+.chat-config input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.chat-config button {
+  margin-top: 1.5rem;
+  padding: 10px 20px;
+  background-color: #2d89ef;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.3s;
+}
+
+.chat-config button:hover {
+  background-color: #1a5ed9;
+}
+
+.fluxo {
+  margin-top: 2rem;
+  background: #f3f3f3;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+#listaFluxo {
+  list-style: none;
+  padding-left: 0;
+}
+
+#listaFluxo li {
+  margin-bottom: 10px;
+  padding: 0.8rem;
+  background: #e7f1ff;
+  border-left: 4px solid #2d89ef;
+  border-radius: 4px;
+}
+

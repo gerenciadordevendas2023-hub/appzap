@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login - Botzap</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-indigo-900 to-blue-800 min-h-screen flex flex-col items-center justify-center text-white">
+
+  <div class="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-8 w-full max-w-md shadow-lg text-center">
+    <h1 class="text-2xl font-bold mb-2 text-teal-400">Conecte seu WhatsApp</h1>
+    <p class="text-sm text-gray-300 mb-6">Escaneie o QR Code abaixo para iniciar a sessão</p>
+
+    <div id="qrWrapper" class="mb-4">
+      <p class="text-gray-300 animate-pulse">⌛ Aguardando QR Code...</p>
+    </div>
+
+    <p id="statusMsg" class="text-sm text-gray-200 mb-4">Iniciando conexão segura...</p>
+    <div id="progressBar" class="h-1 bg-green-500 w-0 transition-all duration-500 ease-in-out rounded-full"></div>
+
+    <button id="btnReload" class="mt-6 bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded font-semibold text-white transition">
+      🔄 Atualizar QR Code
+    </button>
+  </div>
+
+  <footer class="mt-10 text-xs text-gray-400">© 2025 Botzap | Desenvolvido por João Carlos</footer>
+
+  <script>
+  const statusMsg = document.getElementById('statusMsg');
+  const qrWrapper = document.getElementById('qrWrapper');
+  const progressBar = document.getElementById('progressBar');
+  const btnReload = document.getElementById('btnReload');
+
+  let evtSource;
+
+  function conectarSSE() {
+    evtSource = new EventSource('/login');
+
+    evtSource.onmessage = (event) => {
+      const data = event.data;
+
+      if (data.startsWith('data:image')) {
+        const qrImg = new Image();
+        qrImg.src = data;
+        qrImg.classList.add("mx-auto", "rounded", "shadow-lg", "bg-white", "p-2");
+        qrWrapper.innerHTML = '';
+        qrWrapper.appendChild(qrImg);
+
+        statusMsg.textContent = '📷 Escaneie com seu celular para conectar.';
+        progressBar.style.width = '60%';
+      } else if (data === 'aguardando') {
+        qrWrapper.innerHTML = '<p class="text-gray-300 animate-pulse">⌛ Preparando sessão...</p>';
+        statusMsg.textContent = '⏳ Carregando WhatsApp...';
+        progressBar.style.width = '40%';
+      } else if (data === 'ready') {
+        statusMsg.textContent = '✅ Tudo pronto!';
+        progressBar.style.width = '100%';
+        setTimeout(() => window.location.href = '/dashboard.html', 1500);
+      } else if (data.startsWith('erro|')) {
+        const mensagem = data.split('|')[1] || 'Erro desconhecido';
+        statusMsg.textContent = '❌ Falha ao carregar dados: ' + mensagem;
+        qrWrapper.innerHTML = '<p class="text-red-400">Erro ao conectar. Clique abaixo para tentar novamente.</p>';
+        progressBar.style.width = '0%';
+      }
+    };
+  }
+
+  btnReload.addEventListener('click', () => {
+    if (evtSource) evtSource.close();
+    statusMsg.textContent = '🔄 Recarregando sessão...';
+    qrWrapper.innerHTML = '<p class="text-gray-300 animate-pulse">⌛ Recarregando QR Code...</p>';
+    progressBar.style.width = '10%';
+    conectarSSE();
+  });
+
+  conectarSSE();
+</script>
+
+</body>
+</html>

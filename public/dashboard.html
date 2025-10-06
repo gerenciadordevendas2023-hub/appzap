@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard - Botzap</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-gray-800 min-h-screen flex items-center justify-center text-white relative">
+
+  <div class="bg-white/10 backdrop-blur-md p-8 rounded-xl shadow-xl max-w-2xl w-full text-center border border-gray-700">
+    <h1 class="text-3xl font-bold mb-6 text-teal-400">Painel do Botzap</h1>
+    <p class="mb-4 text-gray-300">Escolha uma funcionalidade para continuar:</p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <a href="/leads.html" class="bg-teal-600 hover:bg-teal-700 p-5 rounded-xl transition shadow-lg flex flex-col items-center">
+        <div class="mb-2 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">📊</div>
+        <span class="font-semibold">Análises e Relatórios</span>
+      </a>
+
+      <a href="/chatbots.html" class="bg-indigo-600 hover:bg-indigo-700 p-5 rounded-xl transition shadow-lg flex flex-col items-center">
+        <div class="mb-2 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">🤖</div>
+        <span class="font-semibold">Criar Chatbots</span>
+      </a>
+
+      <a href="/index.html" class="bg-blue-600 hover:bg-blue-700 p-5 rounded-xl transition shadow-lg flex flex-col items-center">
+        <div class="mb-2 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">💬</div>
+        <span class="font-semibold">Menções e Grupos</span>
+      </a>
+
+      <a href="/disparos.html" class="bg-pink-600 hover:bg-pink-700 p-5 rounded-xl transition shadow-lg flex flex-col items-center">
+        <div class="mb-2 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">📤</div>
+        <span class="font-semibold">Disparos on</span>
+      </a>
+
+      <a href="#" class="bg-gray-600 opacity-50 cursor-not-allowed p-5 rounded-xl shadow flex flex-col items-center">
+        <div class="mb-2 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">⚙️</div>
+        <span class="font-semibold">Configurações (em breve)</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- 🔧 Controles fixos no canto inferior -->
+  <div class="absolute bottom-6 right-6 bg-white/10 border border-gray-700 rounded-lg p-4 text-sm shadow-lg backdrop-blur-md space-y-2 text-white">
+    <button onclick="ligarBot()" class="bg-green-600 hover:bg-green-700 py-1 px-3 rounded">Ligar/Conectar</button>
+    <button onclick="desligarBot()" class="bg-red-600 hover:bg-red-700 py-1 px-3 rounded">Desligar</button>
+    <button onclick="deslogarBot()" class="bg-yellow-600 hover:bg-yellow-700 py-1 px-3 rounded">Logout</button>
+    <p id="statusBot" class="text-xs text-gray-300 mt-1"></p>
+  </div>
+
+  <script>
+    async function ligarBot() {
+      const status = document.getElementById('statusBot');
+      status.textContent = '🔄 Ligando...';
+      try {
+        const res = await fetch('/bot/ligar', { method: 'POST' });
+        const data = await res.json();
+        status.textContent = data.status || '✅ Bot ligado!';
+      } catch {
+        status.textContent = '❌ Erro ao ligar o bot.';
+      }
+    }
+
+    async function desligarBot() {
+      const status = document.getElementById('statusBot');
+      status.textContent = '🔄 Desligando...';
+      try {
+        const res = await fetch('/bot/desligar', { method: 'POST' });
+        const data = await res.json();
+        status.textContent = data.status || '⚠️ Bot desligado.';
+      } catch {
+        status.textContent = '❌ Erro ao desligar o bot.';
+      }
+    }
+
+    async function deslogarBot() {
+      console.log('Logout iniciado...');
+      const confirma = confirm('Deseja realmente sair e apagar a sessão?');
+      if (!confirma) {
+        console.log('Logout cancelado pelo usuário');
+        return;
+      }
+
+      try {
+        console.log('Enviando requisição logout...');
+        const res = await fetch('/bot/logout', { method: 'POST' });
+        console.log('Resposta recebida do logout:', res.status);
+        const data = await res.json();
+        console.log('Dados da resposta logout:', data);
+
+        setTimeout(() => {
+          window.location.href = '/login.html';
+        }, 2000);
+      } catch (err) {
+        console.error('Erro ao realizar logout:', err);
+        alert('Erro ao realizar logout');
+      }
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Montador de Chatbot - Multi Fluxos</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <style>
+    #qrCodeContainer {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      border: 1px solid #ddd;
+      padding: 10px;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 180px;
+      text-align: center;
+      display: none;
+      z-index: 1000;
+    }
+    #statusConexao {
+      margin-top: 8px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 flex justify-center items-start p-4 min-h-screen">
+  <div class="w-full max-w-screen-xl bg-white border border-gray-300 rounded-lg shadow-lg p-6 grid grid-cols-3 gap-6">
+
+    <!-- 🧱 Montador de Fluxo -->
+    <section class="col-span-2">
+      <h2 class="text-xl font-bold mb-4">🏗️ Montador de Fluxo</h2>
+      <div class="flex gap-2 mb-4">
+        <input type="text" id="nomeFluxo" placeholder="Nome do fluxo (ex: principal)" class="p-2 border border-gray-300 rounded flex-grow" />
+        <button id="btnCriarFluxo" class="btn bg-green-600">+ Criar</button>
+        <button id="btnCarregarFluxo" class="btn bg-blue-600">🔄 Carregar</button>
+        <button id="btnSalvarFluxo" class="btn bg-yellow-500">💾 Salvar</button>
+      </div>
+
+      <div id="blocos" class="space-y-4"></div>
+
+      <div class="mt-6 flex flex-wrap gap-2">
+        <button id="adicionarBloco" class="btn-sm bg-blue-600">➕ Novo Bloco</button>
+        <button id="exportarFluxo" class="btn-sm bg-yellow-500">💾 Exportar JSON</button>
+        <button id="btnValidar" class="btn-sm bg-purple-600">🛡️ Validar</button>
+        <input type="file" id="importarFluxo" accept=".json" class="hidden" />
+        <button id="btnImportar" class="btn-sm bg-green-500">📂 Importar JSON</button>
+      </div>
+    </section>
+
+    <!-- 📲 WhatsApp + 💬 Simulador -->
+    <section class="flex flex-col gap-6">
+
+      <!-- Conexão WhatsApp -->
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <h2 class="text-base font-semibold mb-3 text-gray-800">📲 Conectar com WhatsApp</h2>
+
+        <label for="numeroWhatsApp" class="block mb-2 text-sm text-gray-700">Número do Cliente:</label>
+        <input type="text" id="numeroWhatsApp" class="w-full p-2 border border-gray-300 rounded mb-3 text-sm" placeholder="Ex: 5511999999999" />
+
+        <label for="atendente" class="block mb-2 text-sm text-gray-700">Nome do atendente:</label>
+        <input id="atendente" class="w-full p-2 border border-gray-300 rounded mb-3 text-sm" placeholder="Ex: João" />
+
+        <div class="grid gap-2">
+          <button id="salvarFluxoBackend" class="btn-sm bg-indigo-600">🚀 Enviar para WhatsApp</button>
+          <button id="btnPararFluxo" class="btn-sm bg-red-600" disabled>🛑 Parar Fluxo</button>
+          <button id="btnApagarFluxo" class="btn-sm bg-gray-600">🗑️ Apagar Fluxo</button>
+        </div>
+
+        <div id="statusConexao" class="text-sm text-center text-gray-700 mt-2">
+          Status: <span id="statusTexto">Desconectado</span>
+        </div>
+      </div>
+
+      <!-- QR Code fixo -->
+      <div id="qrCodeContainer">
+        <h3 class="font-semibold mb-2">📱 Escaneie este QR Code</h3>
+        <canvas id="qrCanvas" class="mx-auto"></canvas>
+      </div>
+
+      <!-- Simulador -->
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col h-[330px]">
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="text-base font-semibold text-gray-800">💬 Simulador</h2>
+          <div class="flex gap-2 text-sm">
+            <button id="restart-flow" class="text-red-500 hover:text-red-600">🔄</button>
+            <button id="clear-simulador" class="text-gray-500 hover:text-gray-700">🧹</button>
+          </div>
+        </div>
+
+        <div id="simulador" class="flex-1 bg-white border rounded px-2 py-2 overflow-y-auto space-y-1 text-sm"></div>
+
+        <div class="mt-3 flex gap-2">
+          <input id="entradaSimulador" type="text" placeholder="Digite aqui..." class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm" />
+          <button id="iniciarSimulacao" class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm">▶️</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Tailwind shortcuts -->
+  <script>
+    document.querySelectorAll('.btn').forEach(btn => btn.classList.add('px-4', 'py-2', 'text-white', 'rounded', 'hover:brightness-110'));
+    document.querySelectorAll('.btn-sm').forEach(btn => btn.classList.add('px-3', 'py-2', 'text-sm', 'text-white', 'rounded', 'hover:brightness-110'));
+  </script>
+</body>
+</html>
+
+  <script>
+let blocos = [];
+let contador = 0;
+let nomeFluxoAtual = null;
+let eventSource = null;
+
+const blocosContainer = document.getElementById('blocos');
+const simulador = document.getElementById('simulador');
+const statusTexto = document.getElementById('statusTexto');
+const qrCodeContainer = document.getElementById('qrCodeContainer');
+const qrCanvas = document.getElementById('qrCanvas');
+const numeroInput = document.getElementById('numeroWhatsApp');
+const nomeFluxoInput = document.getElementById('nomeFluxo');
+
+/* =========================
+   Função para SSE e QR Code
+   ========================= */
+function conectarNumero(numero) {
+  if (eventSource) {
+    eventSource.close();
+    eventSource = null;
+  }
+
+  eventSource = new EventSource(`/chatbot/qr-code-sse/${numero}`);
+
+  eventSource.addEventListener("qr", (event) => {
+    const qr = event.data;
+    QRCode.toCanvas(qrCanvas, qr, (err) => {
+      if (err) {
+        console.error('Erro ao gerar QR Code:', err);
+        qrCodeContainer.style.display = 'none';
+      } else {
+        qrCodeContainer.style.display = 'block';
+      }
+    });
+    atualizarStatus("Aguardando QR Code ser escaneado");
+  });
+
+  eventSource.addEventListener("ready", (event) => {
+    esconderQRCode();
+    atualizarStatus("Conectado");
+    habilitarControles(true);
+  });
+
+  eventSource.addEventListener("disconnected", (event) => {
+    esconderQRCode();
+    atualizarStatus("Desconectado");
+    habilitarControles(false);
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
+  });
+
+  eventSource.onerror = (e) => {
+    console.error('SSE error', e);
+    atualizarStatus('Erro na conexão SSE');
+  };
+}
+
+function fecharSSE() {
+  if (eventSource) {
+    eventSource.close();
+    eventSource = null;
+  }
+}
+
+function mostrarQRCode() {
+  qrCodeContainer.style.display = 'block';
+}
+
+function esconderQRCode() {
+  qrCodeContainer.style.display = 'none';
+  const ctx = qrCanvas.getContext('2d');
+  ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+}
+
+function atualizarStatus(texto) {
+  statusTexto.textContent = texto;
+}
+
+function habilitarControles(ativo) {
+  document.getElementById('btnPararFluxo').disabled = !ativo;
+  document.getElementById('btnApagarFluxo').disabled = !ativo;
+}
+
+/* =========================
+   Blocos do Fluxo
+   ========================= */
+function renderBlocos() {
+  blocosContainer.innerHTML = '';
+  blocos.forEach((bloco) => {
+    const div = document.createElement('div');
+    div.className = 'bg-gray-100 p-4 rounded shadow space-y-2';
+    div.dataset.id = bloco.id;
+
+    const inputMensagem = document.createElement('textarea');
+    inputMensagem.placeholder = 'Mensagem do bloco';
+    inputMensagem.className = 'w-full p-2 border border-gray-300 rounded';
+    inputMensagem.value = bloco.mensagem;
+    inputMensagem.oninput = e => bloco.mensagem = e.target.value;
+
+    const opcoesDiv = document.createElement('div');
+    opcoesDiv.className = 'space-y-1';
+
+    bloco.opcoes.forEach((opcao) => {
+      const linha = document.createElement('div');
+      linha.className = 'flex space-x-2';
+
+      const inputTexto = document.createElement('input');
+      inputTexto.className = 'flex-1 p-1 border rounded';
+      inputTexto.placeholder = 'Texto do botão';
+      inputTexto.value = opcao.texto;
+      inputTexto.oninput = e => opcao.texto = e.target.value;
+
+      const selectDestino = document.createElement('select');
+      selectDestino.className = 'p-1 border rounded';
+      selectDestino.innerHTML = '<option value="">Destino</option>' + blocos.map(b =>
+        `<option value="${b.id}" ${b.id === opcao.destino ? 'selected' : ''}>${b.id}</option>`
+      ).join('');
+      selectDestino.onchange = e => opcao.destino = e.target.value;
+
+      linha.appendChild(inputTexto);
+      linha.appendChild(selectDestino);
+      opcoesDiv.appendChild(linha);
+    });
+
+    const btnAddOpcao = document.createElement('button');
+    btnAddOpcao.textContent = '➕ Adicionar botão';
+    btnAddOpcao.className = 'text-sm text-blue-600';
+    btnAddOpcao.onclick = () => {
+      bloco.opcoes.push({ texto: '', destino: '' });
+      renderBlocos();
+    };
+
+    div.appendChild(document.createTextNode(`🧱 ${bloco.id}`));
+    div.appendChild(inputMensagem);
+    div.appendChild(opcoesDiv);
+    div.appendChild(btnAddOpcao);
+    blocosContainer.appendChild(div);
+  });
+}
+
+document.getElementById('adicionarBloco').onclick = () => {
+  const id = `bloco-${contador++}`;
+  blocos.push({ id, mensagem: '', opcoes: [] });
+  renderBlocos();
+};
+
+/* =========================
+   Simulador
+   ========================= */
+function iniciarAtendimento(id) {
+  const bloco = blocos.find(b => b.id === id);
+  if (!bloco) return;
+
+  simulador.innerHTML = '';
+  const msg = document.createElement('div');
+  msg.textContent = bloco.mensagem;
+  msg.className = 'bg-gray-200 p-2 rounded';
+  simulador.appendChild(msg);
+
+  bloco.opcoes.forEach(op => {
+    const btn = document.createElement('button');
+    btn.textContent = op.texto;
+    btn.className = 'block w-full text-left px-4 py-2 mt-2 bg-blue-100 hover:bg-blue-200 rounded';
+    btn.onclick = () => iniciarAtendimento(op.destino);
+    simulador.appendChild(btn);
+  });
+}
+
+document.getElementById('iniciarSimulacao').onclick = () => {
+  if (blocos.length > 0) iniciarAtendimento('bloco-0');
+};
+
+document.getElementById("restart-flow").onclick = () => {
+  if (blocos.length > 0) iniciarAtendimento('bloco-0');
+};
+
+document.getElementById("clear-simulador").onclick = () => {
+  simulador.innerHTML = '';
+};
+
+/* =========================
+   Export / Import JSON
+   ========================= */
+document.getElementById('exportarFluxo').onclick = () => {
+  if (blocos.length === 0) return alert('Nenhum bloco para exportar!');
+  const data = JSON.stringify(blocos, null, 2);
+  const blob = new Blob([data], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = (nomeFluxoAtual || 'fluxo') + ".json";
+  link.click();
+};
+
+const inputImportar = document.getElementById('importarFluxo');
+document.getElementById('btnImportar').onclick = () => inputImportar.click();
+
+inputImportar.onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const json = JSON.parse(reader.result);
+      if (!Array.isArray(json)) throw new Error("Formato inválido");
+      blocos = json;
+      contador = blocos.length;
+      renderBlocos();
+      alert("Fluxo carregado com sucesso!");
+      inputImportar.value = null;
+    } catch (err) {
+      alert("Erro ao importar JSON: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+};
+
+/* =========================
+   Validar fluxo
+   ========================= */
+document.getElementById('btnValidar').onclick = () => {
+  let erros = [];
+  const blocosReferenciados = new Set();
+
+  blocos.forEach(bloco => {
+    if (!bloco.mensagem.trim() && bloco.opcoes.length === 0) erros.push(`❗ Bloco vazio: ${bloco.id}`);
+    bloco.opcoes.forEach((op, i) => {
+      if (!op.texto.trim()) erros.push(`❌ Botão #${i + 1} no bloco ${bloco.id} sem texto`);
+      if (!op.destino.trim()) erros.push(`❌ Botão #${i + 1} no bloco ${bloco.id} sem destino`);
+      else blocosReferenciados.add(op.destino);
+    });
+  });
+
+  blocos.forEach(bloco => {
+    if (bloco.id !== 'bloco-0' && !blocosReferenciados.has(bloco.id)) erros.push(`⚠️ Bloco órfão: ${bloco.id}`);
+  });
+
+  if (erros.length > 0) alert("🚨 Problemas encontrados:\n\n" + erros.join('\n'));
+  else alert("✅ Fluxo válido!");
+};
+
+/* =========================
+   Fluxo CRUD / WhatsApp
+   ========================= */
+document.getElementById('btnCriarFluxo').onclick = () => {
+  const nome = nomeFluxoInput.value.trim();
+  if (!nome) return alert('Informe o nome do fluxo para criar.');
+  nomeFluxoAtual = nome;
+  blocos = [];
+  contador = 0;
+  renderBlocos();
+  alert(`Novo fluxo "${nome}" criado!`);
+};
+
+document.getElementById('btnSalvarFluxo').onclick = async () => {
+  const numero = numeroInput.value.trim();
+  if (!numero) return alert('Informe o número WhatsApp.');
+  if (!nomeFluxoAtual) return alert('Informe o nome do fluxo.');
+  if (blocos.length === 0) return alert('Nenhum bloco para salvar.');
+
+  try {
+    const res = await fetch('/chatbot/salvar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numero, nomeFluxo: nomeFluxoAtual, fluxo: blocos }),
+    });
+    const data = await res.json();
+    if (res.ok) alert(`Fluxo "${nomeFluxoAtual}" salvo com sucesso!`);
+    else alert('Erro ao salvar fluxo: ' + (data.erro || 'Erro desconhecido'));
+  } catch (err) {
+    alert('Erro ao salvar: ' + err.message);
+  }
+};
+
+document.getElementById('btnCarregarFluxo').onclick = async () => {
+  const numero = numeroInput.value.trim();
+  const nome = nomeFluxoInput.value.trim();
+  if (!numero || !nome) return alert('Informe número e nome do fluxo.');
+
+  try {
+    const res = await fetch(`/chatbot/carregar?numero=${encodeURIComponent(numero)}&nomeFluxo=${encodeURIComponent(nome)}`);
+    const data = await res.json();
+    blocos = data.fluxo || [];
+    contador = blocos.length;
+    nomeFluxoAtual = nome;
+    renderBlocos();
+    alert(`Fluxo "${nome}" carregado!`);
+  } catch (err) {
+    alert('Erro ao carregar fluxo: ' + err.message);
+  }
+};
+
+document.getElementById('salvarFluxoBackend').onclick = async () => {
+  const numero = numeroInput.value.trim();
+  if (!numero || !nomeFluxoAtual || blocos.length === 0) return alert('Preencha todas informações antes.');
+
+  try {
+    await fetch('/chatbot/salvar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numero, nomeFluxo: nomeFluxoAtual, fluxo: blocos }),
+    });
+
+    conectarNumero(numero);
+    alert('Fluxo salvo. Conectando número, escaneie o QR Code.');
+  } catch (err) {
+    alert('Erro ao iniciar WhatsApp: ' + err.message);
+  }
+};
+
+document.getElementById('btnPararFluxo').onclick = async () => {
+  const numero = numeroInput.value.trim();
+  if (!numero) return alert('Informe o número WhatsApp.');
+  try {
+    await fetch('/chatbot/parar-fluxo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ numero }) });
+    atualizarStatus('Fluxo parado');
+    habilitarControles(false);
+  } catch (err) { alert(err.message); }
+};
+
+document.getElementById('btnApagarFluxo').onclick = async () => {
+  const numero = numeroInput.value.trim();
+  if (!numero) return alert('Informe o número WhatsApp.');
+  try {
+    await fetch('/chatbot/apagar-fluxo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ numero }) });
+    fecharSSE();
+    esconderQRCode();
+    atualizarStatus('Desconectado');
+    habilitarControles(false);
+    alert('Fluxo apagado e cliente desconectado.');
+  } catch (err) { alert(err.message); }
+};
+
+/* =========================
+   Inicialização
+   ========================= */
+habilitarControles(false);
+atualizarStatus('Desconectado');
+if (blocos.length === 0) document.getElementById('adicionarBloco').click();
+</script>
+
+</body>
+</html>

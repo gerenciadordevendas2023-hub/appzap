@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Envio de Mensagens - Botzap</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-gray-800 min-h-screen flex items-center justify-center text-white">
+
+  <div class="w-full max-w-2xl bg-white/10 backdrop-blur-md p-8 rounded-xl shadow-lg border border-gray-700">
+    <h1 class="text-2xl font-bold mb-6 text-blue-400 text-center">✉️ Enviar Mensagem para Grupos</h1>
+
+    <div class="space-y-4">
+      <button onclick="atualizarGrupos()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-semibold">
+        🔄 Atualizar Lista de Grupos
+      </button>
+      <p id="statusAtualizacao" class="text-sm text-gray-300"></p>
+
+      <label for="buscaGrupo" class="block text-sm font-bold">🔍 Buscar Grupo:</label>
+      <input type="text" id="buscaGrupo" class="w-full px-3 py-2 rounded bg-gray-700 text-white" placeholder="Digite o nome do grupo" />
+
+      <label for="grupoId" class="block text-sm font-bold mt-2">👥 Selecione o Grupo:</label>
+      <select id="grupoId" class="w-full px-3 py-2 rounded bg-gray-700 text-white"></select>
+
+      <label for="texto" class="block text-sm font-bold mt-2">✏️ Mensagem:</label>
+      <textarea id="texto" rows="4" class="w-full px-3 py-2 rounded bg-gray-700 text-white" placeholder="Digite sua mensagem"></textarea>
+
+      <label for="media" class="block text-sm font-bold mt-2">📎 Mídia (imagem, vídeo, áudio):</label>
+      <input type="file" id="media" accept="image/*,video/*,audio/*" class="w-full bg-gray-800 text-sm text-white px-3 py-2 rounded" />
+
+      <label for="legenda" class="block text-sm font-bold mt-2">📝 Legenda da mídia (opcional):</label>
+      <input type="text" id="legenda" class="w-full px-3 py-2 rounded bg-gray-700 text-white" placeholder="Digite a legenda..." />
+
+      <div class="grid grid-cols-2 gap-4 mt-4">
+        <button id="comMentions" class="bg-green-600 hover:bg-green-700 py-2 px-4 rounded font-semibold">
+          🚀 Enviar com Menções
+        </button>
+        <button id="semMentions" class="bg-blue-600 hover:bg-blue-700 py-2 px-4 rounded font-semibold">
+          ✉️ Enviar sem Menções
+        </button>
+      </div>
+<!-- Adicione logo após a div principal de envio -->
+<div class="mt-10 bg-white/10 backdrop-blur-md p-6 rounded-xl shadow-md border border-gray-700">
+  <h2 class="text-xl font-semibold text-yellow-400 mb-4">🧪 Diagnóstico de Grupos com Problemas</h2>
+  <button onclick="atualizarDiagnosticoGrupos()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded font-semibold mb-4">
+    🔄 Atualizar Diagnóstico
+  </button>
+  <div id="diagnosticoMsg" class="text-sm text-gray-300 mb-2"></div>
+  <div class="overflow-auto max-h-80">
+    <table class="table-auto w-full text-sm text-white border border-gray-700 rounded">
+      <thead class="bg-gray-700 text-white">
+        <tr>
+          <th class="px-4 py-2">Grupo</th>
+          <th class="px-4 py-2">ID</th>
+          <th class="px-2 py-1">Válidos</th>
+          <th class="px-2 py-1">Inválidos</th>
+          <th class="px-2 py-1">Status</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaDiagnostico" class="divide-y divide-gray-600"></tbody>
+    </table>
+  </div>
+</div>
+
+      <p id="status" class="text-sm mt-4 text-gray-300"></p>
+    </div>
+
+    <div class="mt-6 text-center">
+      <a href="/dashboard.html" class="text-blue-400 hover:underline text-sm">⬅️ Voltar ao Menu</a>
+    </div>
+
+    
+  </div>
+
+  <script>
+  let grupos = [];
+
+  window.onload = async () => {
+    try {
+      const res = await fetch('/grupos');
+      grupos = await res.json();
+      renderizarGrupos(grupos);
+    } catch {
+      document.getElementById('grupoId').innerHTML = '<option>Erro ao carregar grupos</option>';
+    }
+  };
+
+  function renderizarGrupos(lista) {
+    const grupoSelect = document.getElementById('grupoId');
+    grupoSelect.innerHTML = lista.map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
+  }
+
+  document.getElementById('buscaGrupo').addEventListener('input', () => {
+    const termo = document.getElementById('buscaGrupo').value.toLowerCase();
+    const filtrados = grupos.filter(g => g.nome.toLowerCase().includes(termo));
+    renderizarGrupos(filtrados);
+  });
+
+  document.getElementById('comMentions').onclick = async (e) => {
+    e.preventDefault();
+    await enviarMensagem(true);
+  };
+
+  document.getElementById('semMentions').onclick = async (e) => {
+    e.preventDefault();
+    await enviarMensagem(false);
+  };
+
+  async function enviarMensagem(comMentions) {
+    const grupoId = document.getElementById('grupoId').value.trim();
+    const texto = document.getElementById('texto').value.trim();
+    const fileInput = document.getElementById('media');
+    const legenda = document.getElementById('legenda').value.trim();
+    const status = document.getElementById('status');
+
+    if (!grupoId || (!texto && fileInput.files.length === 0)) {
+      status.textContent = '⚠️ Escreva uma mensagem ou selecione um arquivo.';
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('grupoId', grupoId);
+    formData.append('texto', texto);
+    formData.append('comMentions', comMentions ? 'true' : 'false');
+    formData.append('legenda', legenda);
+    if (fileInput.files.length > 0) {
+      formData.append('media', fileInput.files[0]);
+    }
+
+    const res = await fetch('/mensagem', {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await res.json();
+    status.textContent = data.status || data.error;
+
+    document.getElementById('texto').value = '';
+    document.getElementById('legenda').value = '';
+    fileInput.value = '';
+  }
+
+  async function atualizarGrupos() {
+    try {
+      const res = await fetch('/grupos/atualizar');
+      const data = await res.json();
+      document.getElementById('statusAtualizacao').textContent = data.status || 'Grupos atualizados.';
+
+      const gruposRes = await fetch('/grupos');
+      grupos = await gruposRes.json();
+      renderizarGrupos(grupos);
+    } catch {
+      document.getElementById('statusAtualizacao').textContent = 'Erro ao atualizar grupos.';
+    }
+  }
+
+  async function atualizarDiagnosticoGrupos() {
+    const tbody = document.getElementById('tabelaDiagnostico');
+    const msg = document.getElementById('diagnosticoMsg');
+    tbody.innerHTML = '';
+    msg.textContent = '⏳ Verificando grupos...';
+
+    try {
+      const res = await fetch('/diagnostico-grupos');
+      const grupos = await res.json();
+      msg.textContent = '';
+
+      if (!Array.isArray(grupos) || grupos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-2">✅ Nenhum problema encontrado.</td></tr>';
+        return;
+      }
+
+      grupos.forEach(g => {
+        const status = (!g.possuiIdValido || !g.possuiNomeValido || g.participantsInvalidos > 0)
+          ? '❌ Inválido'
+          : '✅ OK';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-4 py-2">${g.nome}</td>
+          <td class="px-4 py-2 text-xs break-all">${g.id}</td>
+          <td class="px-2 py-1 text-green-400">${g.participantsValidos}</td>
+          <td class="px-2 py-1 text-red-400">${g.participantsInvalidos}</td>
+          <td class="px-2 py-1 font-semibold ${status.includes('❌') ? 'text-red-500' : 'text-green-500'}">${status}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      msg.textContent = `❌ Erro ao carregar diagnóstico: ${err.message}`;
+      tbody.innerHTML = '';
+    }
+  }
+</script>
+
+</body>
+</html>

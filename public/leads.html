@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>📊 Análise de Leads - Botzap</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-6">
+  <div class="w-full max-w-6xl bg-white/10 backdrop-blur p-8 rounded-xl shadow-xl border border-gray-700">
+    <h1 class="text-2xl font-bold text-center text-yellow-400 mb-6">🔍 Análise de Leads por Período</h1>
+
+    <!-- Filtros -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div>
+        <label for="dataInicio" class="block text-sm font-semibold mb-1">📅 Início:</label>
+        <input type="date" id="dataInicio" class="w-full p-2 rounded bg-gray-800 text-white" />
+      </div>
+      <div>
+        <label for="dataFim" class="block text-sm font-semibold mb-1">📅 Fim:</label>
+        <input type="date" id="dataFim" class="w-full p-2 rounded bg-gray-800 text-white" />
+      </div>
+      <div class="flex gap-2 items-end">
+        <button onclick="analisar()" class="bg-green-600 hover:bg-green-700 w-full py-2 rounded font-bold transition">🚀 Analisar</button>
+        <button id="limparResultados" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold transition">🧹</button>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <p id="status" class="text-sm mb-4 text-blue-300"></p>
+
+    <!-- Tabela -->
+    <div class="overflow-x-auto">
+      <table id="tabelaLeads" class="min-w-full bg-gray-800 rounded text-sm">
+        <thead class="bg-gray-700 text-yellow-300">
+          <tr>
+            <th class="py-2 px-4 text-left">#</th>
+            <th class="py-2 px-4 text-left">Nome</th>
+            <th class="py-2 px-4 text-left">Número</th>
+            <th class="py-2 px-4 text-left">Categoria</th>
+            <th class="py-2 px-4 text-left">Mensagem</th>
+          </tr>
+        </thead>
+        <tbody id="corpoTabela" class="text-white transition-opacity duration-300 opacity-100"></tbody>
+      </table>
+    </div>
+
+    <!-- Ações -->
+    <div class="mt-6 flex justify-between">
+      <button onclick="baixarPDF()" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded font-bold">📥 Baixar PDF</button>
+      <a href="/dashboard.html" class="text-sm text-blue-400 hover:underline">⬅️ Voltar</a>
+    </div>
+
+    <!-- Mural de Palavras-chave -->
+    <hr class="my-10 border-gray-700" />
+    <h2 class="text-xl font-bold text-yellow-300 mb-2">🧠 Gerenciar Palavras-chave</h2>
+
+    <div class="bg-gray-800 p-4 rounded-lg text-sm space-y-4">
+      <div class="flex items-center gap-2">
+        <input id="novaCategoria" type="text" placeholder="Nova categoria..." class="bg-gray-700 text-white px-3 py-1 rounded w-64" />
+        <button onclick="criarCategoria()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded">➕ Nova categoria</button>
+      </div>
+
+      <div class="flex items-center gap-4 mt-4">
+        <label for="categoriaSelect" class="font-semibold">Editar categoria:</label>
+        <select id="categoriaSelect" class="bg-gray-700 text-white px-3 py-1 rounded"></select>
+
+        <input id="novaPalavra" type="text" placeholder="nova palavra..." class="bg-gray-700 text-white px-3 py-1 rounded w-64" />
+        <button onclick="adicionarPalavra()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded">➕ Palavra</button>
+      </div>
+
+      <div>
+        <p class="mb-1 text-gray-300">Palavras da categoria selecionada:</p>
+        <ul id="listaPalavras" class="flex flex-wrap gap-2"></ul>
+      </div>
+
+      <button onclick="salvarPalavras()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold">💾 Salvar mudanças</button>
+    </div>
+  </div>
+
+  <script>
+    let resultadoAtual = [];
+
+    async function analisar() {
+      const inicio = document.getElementById('dataInicio').value;
+      const fim = document.getElementById('dataFim').value;
+      const status = document.getElementById('status');
+      const tbody = document.getElementById('corpoTabela');
+      tbody.innerHTML = '';
+      resultadoAtual = [];
+      status.textContent = '';
+
+      const botao = document.querySelector('button[onclick="analisar()"]');
+      botao.disabled = true;
+      botao.textContent = '⏳ Analisando...';
+      botao.classList.add('opacity-60', 'cursor-not-allowed');
+
+      if (!inicio || !fim) {
+        status.textContent = '⚠️ Preencha as datas de início e fim.';
+        resetBotao();
+        return;
+      }
+
+      status.textContent = '⏳ Analisando conversas...';
+
+      try {
+        const res = await fetch(`/leads/analisar?dataInicio=${inicio}&dataFim=${fim}`);
+        const dados = await res.json();
+
+        resetBotao();
+
+        if (!dados.sucesso || !Array.isArray(dados.resultado)) {
+          status.textContent = '❌ Erro ao analisar conversas.';
+          return;
+        }
+
+        if (dados.resultado.length === 0) {
+          status.textContent = 'ℹ️ Nenhuma conversa encontrada no período.';
+          return;
+        }
+
+        resultadoAtual = dados.resultado;
+        status.textContent = `✅ ${dados.resultado.length} lead(s) encontrados`;
+
+        dados.resultado.forEach((lead, i) => {
+          const tr = document.createElement('tr');
+          tr.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+
+          tr.innerHTML = `
+            <td class="py-1 px-2">${i + 1}</td>
+            <td class="py-1 px-2">${lead.nome}</td>
+            <td class="py-1 px-2">${lead.numero}</td>
+            <td class="py-1 px-2 text-green-400">${lead.categoria}</td>
+            <td class="py-1 px-2">${lead.mensagem}</td>
+          `;
+          tbody.appendChild(tr);
+          requestAnimationFrame(() => {
+            tr.classList.remove('opacity-0');
+            tr.classList.add('opacity-100');
+          });
+        });
+
+      } catch (err) {
+        status.textContent = '❌ Erro ao conectar com o servidor.';
+        resetBotao();
+      }
+    }
+
+    function resetBotao() {
+      const botao = document.querySelector('button[onclick="analisar()"]');
+      botao.disabled = false;
+      botao.textContent = '🚀 Analisar';
+      botao.classList.remove('opacity-60', 'cursor-not-allowed');
+    }
+
+    async function baixarPDF() {
+      if (resultadoAtual.length === 0) {
+        alert('Nenhum lead analisado ainda.');
+        return;
+      }
+
+      const res = await fetch('/leads/gerar-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resultado: resultadoAtual })
+      });
+
+      if (!res.ok) return alert('Erro ao gerar PDF.');
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'leads-analisados.pdf';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }
+
+    document.getElementById('limparResultados').addEventListener('click', () => {
+      const tbody = document.getElementById('corpoTabela');
+      const status = document.getElementById('status');
+
+      tbody.style.opacity = '0';
+      setTimeout(() => {
+        tbody.innerHTML = '';
+        tbody.style.opacity = '1';
+        status.textContent = '';
+        resultadoAtual = [];
+        console.log('🧹 Tela limpa com sucesso.');
+      }, 300);
+    });
+
+   let palavrasGlobais = {
+  'PEDIU ORÇAMENTO': ['preço', 'valor', 'orçamento'],
+  'PEDIU INFORMAÇÃO': ['informação', 'detalhes', 'como funciona'],
+  'INTERESSADO': ['quero', 'interesse'],
+  'CURRÍCULO': ['currículo', 'emprego'],
+};
+
+const categoriaSelect = document.getElementById('categoriaSelect');
+const listaPalavras = document.getElementById('listaPalavras');
+
+// 🔁 Popular dropdown de categorias
+function carregarCategorias() {
+  categoriaSelect.innerHTML = '';
+  Object.keys(palavrasGlobais).forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat;
+    opt.textContent = cat;
+    categoriaSelect.appendChild(opt);
+  });
+  atualizarLista();
+}
+
+categoriaSelect.addEventListener('change', atualizarLista);
+
+// 📋 Atualiza visual das palavras da categoria
+function atualizarLista() {
+  const cat = categoriaSelect.value;
+  listaPalavras.innerHTML = '';
+  if (!palavrasGlobais[cat]) return;
+  palavrasGlobais[cat].forEach((palavra, i) => {
+    const item = document.createElement('li');
+    item.className = 'bg-gray-700 px-2 py-1 rounded flex items-center gap-2';
+    item.innerHTML = `
+      <span>${palavra}</span>
+      <button onclick="removerPalavra('${cat}', ${i})" class="text-red-400 hover:text-red-600">🗑️</button>
+    `;
+    listaPalavras.appendChild(item);
+  });
+  console.log(`🧩 Categoria ativa: "${cat}"`);
+}
+
+// ➕ Adiciona nova palavra
+function adicionarPalavra() {
+  const nova = document.getElementById('novaPalavra').value.trim().toLowerCase();
+  const cat = categoriaSelect.value;
+  if (!nova || !cat) return;
+  if (!palavrasGlobais[cat]) palavrasGlobais[cat] = [];
+  palavrasGlobais[cat].push(nova);
+  document.getElementById('novaPalavra').value = '';
+  atualizarLista();
+  console.log(`✅ Palavra adicionada à "${cat}": ${nova}`);
+}
+
+// 🗑️ Remove uma palavra
+function removerPalavra(cat, index) {
+  const removida = palavrasGlobais[cat][index];
+  palavrasGlobais[cat].splice(index, 1);
+  atualizarLista();
+  console.log(`🗑️ Palavra removida de "${cat}": ${removida}`);
+}
+
+// ➕ Criar nova categoria (máx. 6)
+function criarCategoria() {
+  const nova = document.getElementById('novaCategoria').value.trim().toUpperCase();
+  if (!nova) return alert('Informe o nome da categoria.');
+  if (Object.keys(palavrasGlobais).length >= 6) {
+    alert('⚠️ Limite de 6 categorias atingido.');
+    return;
+  }
+  if (palavrasGlobais[nova]) {
+    alert('⚠️ Categoria já existe.');
+    return;
+  }
+  palavrasGlobais[nova] = [];
+  document.getElementById('novaCategoria').value = '';
+  console.log(`📁 Categoria criada: "${nova}"`);
+  carregarCategorias();
+  categoriaSelect.value = nova;
+  atualizarLista();
+}
+
+// 💾 Enviar alterações para o backend
+async function salvarPalavras() {
+  console.log('📤 Enviando palavras para /leads/palavras-chave...');
+  try {
+    const res = await fetch('/leads/palavras-chave', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(palavrasGlobais)
+    });
+    if (res.ok) {
+      console.log('✅ Palavras-chave salvas com sucesso!');
+      alert('Palavras-chave atualizadas!');
+    } else {
+      console.warn('❌ Erro ao salvar palavras.');
+    }
+  } catch (err) {
+    console.error('❌ Erro na requisição:', err.message);
+  }
+}
+
+// 🚀 Iniciar painel
+carregarCategorias();
+
+
+
+
+  </script>
+</body>
+</html>
